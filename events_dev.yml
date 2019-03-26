@@ -1,0 +1,29 @@
+version: "3.7"
+services:
+    
+  events:
+    ### Change the tag below to run a different version of RESTHeart
+    image: $CONTAINER_RELEASE_IMAGE
+    ### Uncomment to name the container explicitly
+    deploy:
+      labels:
+        - "traefik.backend=${CI_PROJECT_NAME}"
+        - "traefik.docker.network=proxy"
+        - "traefik.enable=true"
+        - "traefik.port=80"
+        - "traefik.frontend.rule=Host:${CI_PROJECT_NAME}.${TINA_DEV_DOMAIN}"
+        - "traefik.frontend.entryPoints=http, https"
+    depends_on:
+      - tina_tina-mongo-rest
+    networks:
+      - proxy
+      - internal   
+
+networks:
+  proxy:
+    driver: overlay
+    external: true
+  internal:
+    driver: overlay
+    external: true
+

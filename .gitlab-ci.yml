@@ -1,0 +1,60 @@
+image: registry.tinadev.ctg.lu/root/dind:tina
+
+services:
+  - name: registry.tinadev.ctg.lu/root/dind:tina
+    
+stages:
+  - build
+  - release
+  - deploy
+  
+variables:
+  #DOCKER_HOST: tcp://localhost:2375
+  #DOCKER_DRIVER: overlay2
+  CONTAINER_IMAGE: $CI_REGISTRY_IMAGE
+  #CONTAINER_TEST_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+  CONTAINER_RELEASE_IMAGE: $CI_REGISTRY_IMAGE:$CI_COMMIT_REF_SLUG
+
+before_script:
+  - docker login -u gitlab-ci-token -p $CI_JOB_TOKEN $CI_REGISTRY
+
+build:
+  stage: build
+  script:
+    - docker build --pull -t $CONTAINER_RELEASE_IMAGE .
+    - docker push $CONTAINER_RELEASE_IMAGE
+
+release-image:
+  stage: release
+  script:
+    - docker pull $CONTAINER_RELEASE_IMAGE
+    #- docker tag $CONTAINER_TEST_IMAGE $CONTAINER_RELEASE_IMAGE
+    #- docker push $CONTAINER_RELEASE_IMAGE
+  only:
+    - master
+
+
+
+deploy_dev:
+  stage: deploy
+  environment:
+    name: dev
+    url: http://events.tinadev.ctg.lu
+  script:
+    - export NFS_ROOT="/home/jlebourg/data"
+    - docker stack deploy tina_dev -c ${CI_PROJECT_NAME}_dev.yml
+  only:
+    - master
+    
+deploy_prod:
+  stage: deploy
+  when: manual
+  environment:
+    name: production
+    url: http://events.tina.ctg.lu
+  script:
+    - export SVC_HOST="events"
+    - export NFS_ROOT="/home/jlebourg/data"
+    - docker stack deploy tina -c ${CI_PROJECT_NAME}.yml
+  only:
+    - master
